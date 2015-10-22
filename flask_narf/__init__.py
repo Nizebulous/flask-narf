@@ -1,3 +1,4 @@
+from re import sub
 from sys import exc_info
 
 from flask import request
@@ -29,6 +30,7 @@ class Endpoint(object):
 
     def bind(self, path):
         self.path = path
+        self.base_path = sub(r'<.+?>', '', path)
 
     def setup_request(self):
         """
@@ -60,8 +62,8 @@ class NARF():
             'DEFAULT_CONTENT_TYPE_MAP',
             {
                 'text/html': JSON,
-                'application/json': JSON,
-                'application/collection+json': CollectionPlusJSON
+                JSON.CONTENT_TYPE: JSON,
+                CollectionPlusJSON.CONTENT_TYPE: CollectionPlusJSON
             }
         )
         # Use the newstyle teardown_appcontext if it's available,

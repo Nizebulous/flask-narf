@@ -1,4 +1,3 @@
-from re import sub
 from traceback import format_tb
 
 from flask import request, Response, json
@@ -75,7 +74,7 @@ class JSON(ContentType):
 
 class CollectionPlusJSON(ContentType):
     """
-    Content-Type: application/collection+json
+    Content-Type: application/vnd.collection+json
     """
 
     CONTENT_TYPE = 'application/vnd.collection+json'
@@ -104,10 +103,8 @@ class CollectionPlusJSON(ContentType):
                     field_data['prompt'] = prompt
                 data.append(field_data)
         obj = {
-            'href': request.url_root + sub(
-                r'\<.+?\>',
-                str(pk_field.serialize_value()),
-                self.endpoint.path.lstrip('/')
+            'href': '%s%s/%s' % (
+                request.url_root.rstrip('/'), self.endpoint.base_path, pk_field.serialize_value()
             )
         }
         if data:
