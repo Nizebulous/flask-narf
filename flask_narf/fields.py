@@ -27,6 +27,9 @@ class Field(object):
     def serialize_value(self):
         return self.raw_value
 
+    def deserialize_value(self):
+        return self.raw_value
+
     def bind(self, parent, field_name, raw_data):
         self.parent = parent
         self.field_name = field_name
@@ -39,6 +42,15 @@ class Field(object):
     @property
     def source(self):
         return self._source if self._source is not None else self.field_name
+
+
+class StringField(Field):
+
+    def serialize_value(self):
+        return str(self.raw_value)
+
+    def deserialize_value(self):
+        return str(self.raw_value)
 
 
 class FieldRef(Field):
