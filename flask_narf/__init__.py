@@ -38,12 +38,16 @@ class Endpoint(object):
         """
         best = request.accept_mimetypes.best_match(self.content_type_map.keys())
         self.content_type = self.content_type_map[best](self)
+        if self.FilterSet:
+            self.filter_set = self.FilterSet()
+            self.filter_set.validate_inputs()
 
     def teardown_request(self):
         """
         Teardown the request for this endpoint (cleanup)
         """
         self.content_type = None
+        self.filter_set = None
 
 
 class NARF():
@@ -89,7 +93,7 @@ class NARF():
     def register_filterset(self, target):
         def decorator(func):
             endpoint = self.get_endpoint(func.__name__)
-            endpoint.FilterSet = target(endpoint)
+            endpoint.FilterSet = target
             return func
         return decorator
 
@@ -138,6 +142,8 @@ class NARF():
                 endpoint.bind(path)
                 try:
                     endpoint.setup_request()
+                    if endpoint.filter_set:
+                        kwargs['filterset'] = endpoint.filter_set
                     returned_object = func(*args, **kwargs)
                     serialized_data = endpoint.content_type.serialize(returned_object)
                     response = endpoint.content_type.make_response(serialized_data)
