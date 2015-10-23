@@ -50,7 +50,7 @@ class StringField(Field):
         return str(self.raw_value)
 
     def deserialize_value(self):
-        return str(self.raw_value)
+        return str(self.raw_value) if self.raw_value is not None else None
 
 
 class FieldRef(Field):
