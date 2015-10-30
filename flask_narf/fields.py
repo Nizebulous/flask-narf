@@ -1,4 +1,6 @@
-from flask import request
+from urllib import urlencode
+
+from flask import request, url_for
 
 
 class Field(object):
@@ -78,10 +80,15 @@ class RelatedURIField(URIField):
         super(RelatedURIField, self).__init__(**kwargs)
 
     def serialize_value(self):
-        query_string = '?' if self.filters else ''
+        params = {}
+        url_root = request.url_root.rstrip('/')
         for param, value in self.filters.items():
             if isinstance(value, FieldRef):
                 value.bind(self.parent, param, self.raw_data)
-                value = value.serialize_value()
-            query_string += '%s=%s' % (param, value)
-        return request.url_root + self.related_endpoint + query_string
+                params[param] = value.serialize_value()
+        if params:
+            return '{0}{1}?{2}'.format(
+                url_root, url_for(self.related_endpoint), urlencode(params)
+            )
+        else:
+            return '{0}{1}'.format(url_root, url_for(self.related_endpoint))

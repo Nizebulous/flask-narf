@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='Flask-NARF',
-    version='0.1',
+    version='0.0.2',
     url='https://github.com/Nizebulous/flask-narf',
     license='MIT',
     author='Damian Hites',

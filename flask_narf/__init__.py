@@ -27,6 +27,8 @@ class Endpoint(object):
         self.content_type = None
         self.Serializer = api.app.config['DEFAULT_SERIALIZER']
         self.content_type_map = api.app.config['DEFAULT_CONTENT_TYPE_MAP'].copy()
+        self.filter_set = None
+        self.content_type = None
 
     def bind(self, path):
         self.path = path
@@ -61,6 +63,7 @@ class NARF():
             self.init_app(app)
 
     def init_app(self, app):
+        self.endpoints = {}
         app.config.setdefault('DEFAULT_SERIALIZER', Serializer)
         app.config.setdefault(
             'DEFAULT_CONTENT_TYPE_MAP',
@@ -84,10 +87,10 @@ class NARF():
         pass
 
     def get_endpoint(self, name):
-        endpoint = getattr(self, '__endpoint_' + name, None)
+        endpoint = self.endpoints.get(name)
         if endpoint is None:
             endpoint = Endpoint(self)
-            setattr(self, '__endpoint_' + name, endpoint)
+            self.endpoints[name] = endpoint
         return endpoint
 
     def register_filterset(self, target):
@@ -137,9 +140,10 @@ class NARF():
         """
         # decorate the endpoint
         def decorator(func):
+            endpoint = self.get_endpoint(func.__name__)
+            endpoint.bind(path)
+
             def decorated(*args, **kwargs):
-                endpoint = self.get_endpoint(func.__name__)
-                endpoint.bind(path)
                 try:
                     endpoint.setup_request()
                     if endpoint.filter_set:
@@ -154,6 +158,7 @@ class NARF():
                     )
                 endpoint.teardown_request()
                 return response
+
             self.app.add_url_rule(path, func.__name__, view_func=decorated)
             return func
         return decorator
