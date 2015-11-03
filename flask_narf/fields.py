@@ -24,7 +24,7 @@ class Field(object):
         self.pk = pk
         self.display_prompt = display_prompt
         self.field_name = None
-        self.raw_value = self.UNSET
+        # TODO(Dom): add support for non-required fields
 
     def serialize_value(self):
         return self.raw_value
@@ -32,14 +32,17 @@ class Field(object):
     def deserialize_value(self):
         return self.raw_value
 
+    def _populate_raw_value(self):
+        if isinstance(self.raw_data, dict):
+            self.raw_value = self.raw_data[self.source]
+        else:
+            self.raw_value = getattr(self.raw_data, self.source)
+
     def bind(self, parent, field_name, raw_data):
         self.parent = parent
         self.field_name = field_name
         self.raw_data = raw_data
-        if isinstance(raw_data, dict):
-            self.raw_value = raw_data.get(self.source, None)
-        else:
-            self.raw_value = getattr(raw_data, self.source, None)
+        self._populate_raw_value()
 
     @property
     def source(self):
@@ -49,19 +52,25 @@ class Field(object):
 class StringField(Field):
 
     def serialize_value(self):
-        return str(self.raw_value)
+        return unicode(self.raw_value)
 
     def deserialize_value(self):
-        return str(self.raw_value) if self.raw_value is not None else None
+        return unicode(self.raw_value) if self.raw_value is not None else None
 
 
 class FieldRef(Field):
+
+    def _populate_raw_value(self):
+        """
+        Override to avoid looking for the raw_value since we generate it
+        """
+        return
 
     def serialize_value(self):
         return getattr(self.parent, self.source).serialize_value()
 
 
-class URIField(Field):
+class URIField(StringField):
     """
     URI Field
 
@@ -74,10 +83,17 @@ class URIField(Field):
 
 
 class RelatedURIField(URIField):
-    def __init__(self, related_endpoint=None, filters=None, **kwargs):
+
+    def __init__(self, related_endpoint, filters=None, **kwargs):
         self.related_endpoint = related_endpoint.lstrip('/')
-        self.filters = filters
+        self.filters = filters or {}
         super(RelatedURIField, self).__init__(**kwargs)
+
+    def _populate_raw_value(self):
+        """
+        Override to avoid looking for the raw_value since we generate it
+        """
+        return
 
     def serialize_value(self):
         params = {}
@@ -86,9 +102,7 @@ class RelatedURIField(URIField):
             if isinstance(value, FieldRef):
                 value.bind(self.parent, param, self.raw_data)
                 params[param] = value.serialize_value()
-        if params:
-            return '{0}{1}?{2}'.format(
-                url_root, url_for(self.related_endpoint), urlencode(params)
-            )
-        else:
-            return '{0}{1}'.format(url_root, url_for(self.related_endpoint))
+            else:
+                params[param] = value
+        param_string = '?{0}'.format(urlencode(params)) if params else ''
+        return u'{0}{1}{2}'.format(url_root, url_for(self.related_endpoint), param_string)

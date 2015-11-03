@@ -56,6 +56,15 @@ class JSON(ContentType):
 
     CONTENT_TYPE = 'application/json'
 
+    def serialize(self, obj):
+        """
+        Override serialization to allow for free-form JSON responses
+        """
+        if self.endpoint.Serializer is None:
+            return json.dumps(obj)
+        else:
+            return super(JSON, self).serialize(obj)
+
     def serialize_response(self, items):
         return json.dumps({'items': items})
 
@@ -102,6 +111,7 @@ class CollectionPlusJSON(ContentType):
                 if prompt:
                     field_data['prompt'] = prompt
                 data.append(field_data)
+        # TODO(Dom): Handle missing pk_field error better
         obj = {
             'href': '%s%s/%s' % (
                 request.url_root.rstrip('/'), self.endpoint.base_path, pk_field.serialize_value()

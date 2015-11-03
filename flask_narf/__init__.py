@@ -25,7 +25,7 @@ class Endpoint(object):
         self.FilterSet = None
         self.Deserializer = None
         self.content_type = None
-        self.Serializer = api.app.config['DEFAULT_SERIALIZER']
+        self.Serializer = None
         self.content_type_map = api.app.config['DEFAULT_CONTENT_TYPE_MAP'].copy()
         self.filter_set = None
         self.content_type = None
@@ -64,7 +64,6 @@ class NARF():
 
     def init_app(self, app):
         self.endpoints = {}
-        app.config.setdefault('DEFAULT_SERIALIZER', Serializer)
         app.config.setdefault(
             'DEFAULT_CONTENT_TYPE_MAP',
             {
