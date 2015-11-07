@@ -174,6 +174,60 @@ class EndpointDeclaration(APITest):
         self.assertIsInstance(home_endpoint, Endpoint)
         self.verify_endpoint_declaration(home_endpoint, content_types=[TestContentType])
 
+    def test_with_app_not_inited(self):
+        """
+        Test endpoint creation with an app that hasn't been initialized yet
+        """
+        api = NARF()
+
+        @api.endpoint('/')
+        def home():
+            return {'hello': 'world'}
+
+        app = Flask(__name__)
+        api.init_app(app)
+
+        # We should have 1 endpoint defined
+        self.assertEqual(len(api.endpoints), 1)
+
+        # Verify home configuration
+        self.assertIn('home', api.endpoints)
+        home_endpoint = api.endpoints['home']
+        self.assertIsInstance(home_endpoint, Endpoint)
+        self.verify_endpoint_declaration(home_endpoint)
+
+    def test_with_app_inited_before(self):
+        """
+        Test endpoint creation with an app that has endpoints added before and after initialization
+        """
+        api = NARF()
+
+        @api.endpoint('/')
+        def home():
+            return {'hello': 'world'}
+
+        app = Flask(__name__)
+        api.init_app(app)
+
+        @api.endpoint('/after')
+        def after():
+            return {'after': 'world'}
+
+        # We should have 1 endpoint defined
+        self.assertEqual(len(api.endpoints), 2)
+
+        # Verify home configuration
+        self.assertIn('home', api.endpoints)
+        home_endpoint = api.endpoints['home']
+        self.assertIsInstance(home_endpoint, Endpoint)
+        self.verify_endpoint_declaration(home_endpoint)
+
+        # Verify after configuration
+        self.assertIn('after', api.endpoints)
+        after_endpoint = api.endpoints['after']
+        self.assertIsInstance(after_endpoint, Endpoint)
+        self.verify_endpoint_declaration(after_endpoint)
+
 
 class TestObject(object):
     pass

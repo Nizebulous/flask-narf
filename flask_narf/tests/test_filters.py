@@ -35,3 +35,20 @@ class TestFilterSet(TestCase):
         filter_set = MyFilterSet()
         filter_set.validate_inputs()
         self.assertEqual(filter_set.field.validated_value, 'input')
+        self.assertEqual(filter_set.string_field.validated_value, 'string_input')
+
+    @patch('flask.ext.narf.filters.request')
+    def test_filter_set_no_fields_provided(self, request):
+        """
+        Test a FilterSet without providing anything in args
+        """
+        request.args = {}
+
+        class MyFilterSet(FilterSet):
+            field = Filter(Field())
+            string_field = Filter(StringField())
+
+        filter_set = MyFilterSet()
+        filter_set.validate_inputs()
+        self.assertIsNone(filter_set.field.validated_value)
+        self.assertIsNone(filter_set.string_field.validated_value)

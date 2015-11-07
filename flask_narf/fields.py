@@ -2,6 +2,8 @@ from urllib import urlencode
 
 from flask import request, url_for
 
+from flask.ext.narf.filters import Filter
+
 
 class Field(object):
     """
@@ -14,16 +16,12 @@ class Field(object):
         2. Store information about the field that would be useful for a ContentType
     """
 
-    class UnsetValue(object):
-        pass
-
-    UNSET = UnsetValue()
-
-    def __init__(self, source=None, pk=False, display_prompt=None):
+    def __init__(self, source=None, pk=False, display_prompt=None, required=None):
         self._source = source
         self.pk = pk
         self.display_prompt = display_prompt
         self.field_name = None
+        self.required = None
         # TODO(Dom): add support for non-required fields
 
     def serialize_value(self):
@@ -34,11 +32,18 @@ class Field(object):
 
     def _populate_raw_value(self):
         if isinstance(self.raw_data, dict):
-            self.raw_value = self.raw_data[self.source]
+            self.raw_value = self.raw_data.get(self.source)
         else:
-            self.raw_value = getattr(self.raw_data, self.source)
+            self.raw_value = getattr(self.raw_data, self.source, None)
+        if self.raw_value is None and self.required:
+            raise ValueError('Missing required field "{}"'.format(self.source))
 
     def bind(self, parent, field_name, raw_data):
+        if self.required is None:
+            if isinstance(parent, Filter):
+                self.required = False
+            else:
+                self.required = True
         self.parent = parent
         self.field_name = field_name
         self.raw_data = raw_data

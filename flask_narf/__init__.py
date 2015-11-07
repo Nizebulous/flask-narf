@@ -18,7 +18,7 @@ class Endpoint(object):
     Also contains setup and teardown logic for all endpoints.
     """
 
-    def __init__(self, api):
+    def __init__(self):
         """
         Initialize with default endpoint behavior.
         """
@@ -26,13 +26,33 @@ class Endpoint(object):
         self.Deserializer = None
         self.content_type = None
         self.Serializer = None
-        self.content_type_map = api.app.config['DEFAULT_CONTENT_TYPE_MAP'].copy()
+        self.content_type_map = {}
         self.filter_set = None
         self.content_type = None
 
-    def bind(self, path):
+    def bind(self, api, path, func, decorated):
+        """
+        Bind this endpoint to the API at a specific path with a specific function
+        """
+        self.api = api
         self.path = path
+        self.func = func
+        self.decorated = decorated
         self.base_path = sub(r'<.+?>', '', path)
+        if api.app:
+            self.init_app(api.app)
+
+    def init_app(self, app):
+        """
+        Initialize this endpoint with the Flask app when it's available
+        """
+        app.add_url_rule(self.path, self.func.__name__, view_func=self.decorated)
+        # Generate the content_type_map with this priority:
+        #   1. endpoint content-type overrides
+        #   2. global content-type overrides
+        #   3. default content-types
+        for content_type, content_type_class in app.config['DEFAULT_CONTENT_TYPE_MAP'].items():
+            self.content_type_map.setdefault(content_type, content_type_class)
 
     def setup_request(self):
         """
@@ -59,11 +79,16 @@ class NARF():
 
     def __init__(self, app=None):
         self.app = app
+        self.endpoints = {}
         if app is not None:
             self.init_app(app)
 
     def init_app(self, app):
-        self.endpoints = {}
+        """
+        Initialize the NARF extension with this app
+        """
+        self.app = app
+        # setup the default content-types taking into account global overrides
         app.config.setdefault(
             'DEFAULT_CONTENT_TYPE_MAP',
             {
@@ -78,6 +103,9 @@ class NARF():
             app.teardown_appcontext(self.teardown)
         else:
             app.teardown_request(self.teardown)
+        # initialize all the endpoints
+        for endpoint in self.endpoints.values():
+            endpoint.init_app(app)
 
     def teardown(self, exception):
         """
@@ -88,7 +116,7 @@ class NARF():
     def get_endpoint(self, name):
         endpoint = self.endpoints.get(name)
         if endpoint is None:
-            endpoint = Endpoint(self)
+            endpoint = Endpoint()
             self.endpoints[name] = endpoint
         return endpoint
 
@@ -139,9 +167,6 @@ class NARF():
         """
         # decorate the endpoint
         def decorator(func):
-            endpoint = self.get_endpoint(func.__name__)
-            endpoint.bind(path)
-
             def decorated(*args, **kwargs):
                 try:
                     endpoint.setup_request()
@@ -158,8 +183,12 @@ class NARF():
                 endpoint.teardown_request()
                 return response
 
-            self.app.add_url_rule(path, func.__name__, view_func=decorated)
+            # setup the endpoint
+            endpoint = self.get_endpoint(func.__name__)
+            endpoint.bind(self, path, func, decorated)
+
             return func
+
         return decorator
 
     def resource(self, cls):
