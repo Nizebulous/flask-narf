@@ -58,7 +58,7 @@ class Endpoint(object):
         """
         Setup the request for this endpoint
         """
-        best = request.accept_mimetypes.best_match(self.content_type_map.keys())
+        best = request.accept_mimetypes.best_match(self.content_type_map.keys()) or 'text/html'
         self.content_type = self.content_type_map[best](self)
         if self.FilterSet:
             self.filter_set = self.FilterSet()
